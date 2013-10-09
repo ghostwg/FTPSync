@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.SocketException;
+import android.support.v4.*;
 
 import org.apache.commons.net.ftp.FTPClient;
 
@@ -13,6 +14,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
@@ -44,7 +46,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         init();
     }
-   
+    // init variables from *.xml settings file
     public void init() {
     	sPref = getSharedPreferences("ftp_settings",0);
         FTP_Server = sPref.getString("FTP_SERVER", "");
@@ -55,75 +57,70 @@ public class MainActivity extends Activity {
 	    DFile = sPref.getString("REMOTE_FILE", "");
 	    UFile = sPref.getString("LOCAL_FILE", "");
 	}
-    
-    public boolean FTP_Connect(String server) {
-        ftp = new FTPClient();
+    // connection to ftp server
+    public boolean FTP_Connect(final String server) {
 		try {
-			Toast.makeText(this,"Подключаемся к: "+ server, Toast.LENGTH_SHORT).show();
-			ftp.connect(server);
+		    ftp = new FTPClient();
+		   msg("Подключаемся к: "+ server);	
+			ftp.connect(server,21);
 			} catch (SocketException e) {
-			e.printStackTrace();
-			Toast.makeText(this, "Имя сервера отсутствует", Toast.LENGTH_SHORT).show();
-			return false;
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			Toast.makeText(this, "Ошибка ввода-вывода", Toast.LENGTH_SHORT).show();
-			return false;
-		}
+				e.printStackTrace();
+				msg("Имя сервера отсутствует");
+			} catch (IOException e) {
+				e.printStackTrace();
+				msg("Ошибка ввода-вывода");
+			}
 		return true; 
     }
-
+    // disconnection from ftp server
     public boolean FTP_Disconnect()
 	{
 	    try {
 	        ftp.logout();
 	        ftp.disconnect();
-	        Toast.makeText(this,"Подключение завершено.", Toast.LENGTH_SHORT).show();
+	        msg("Подключение завершено.");
 	        return true;
 	    } catch (Exception e) {
-	    	Toast.makeText(this,"Ошибка завершения подключения.", Toast.LENGTH_SHORT).show();
+	    	msg("Ошибка завершения подключения.");
 	    }
 	    return false;
 	} 
-
-    
+    // login to ftp server
     public boolean FTP_Login(String User, String Pass){	
     	try {
-                ftp.login(User, Pass);
-                Toast.makeText(this,"Доступ разрешен!", Toast.LENGTH_SHORT).show();
-                ftp.setFileType(ftp.BINARY_FILE_TYPE);
-                ftp.enterLocalPassiveMode();
+             ftp.login(User, Pass);
+             msg("Доступ разрешен!");
+             ftp.setFileType(ftp.BINARY_FILE_TYPE);
+             ftp.enterLocalPassiveMode();
             } catch(Exception e) {
-        	Toast.makeText(this, "Ошибка: Некорректные учетные данные", Toast.LENGTH_SHORT).show();
+        	 msg("Ошибка: Некорректные учетные данные");
         }
         return true;
      }
-    
+    // change directory on ftp server
     public void FTP_CD(String Dir){
         try {
             ftp.changeWorkingDirectory(Dir);
-            Toast.makeText(this, "Установка удаленного каталога " + Dir, Toast.LENGTH_SHORT).show();
+            msg("Установка удаленного каталога " + Dir);
             } catch(Exception e) {
-          Toast.makeText(this, "Ошибка: Отсутствует удаленный каталог " + Dir, Toast.LENGTH_SHORT).show();
+            msg("Ошибка: Отсутствует удаленный каталог " + Dir);
         }
     }
+    // download file from ftp server
+    public boolean FTP_Download(String srcFilePath, String desFilePath) {
     
-    public boolean FTP_Download(String srcFilePath, String desFilePath)
-    {
-       
-	try {
-			output = new FileOutputStream(desFilePath);
+    	try {
+    		output = new FileOutputStream(desFilePath);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
-			Toast.makeText(this,"Файл не найден", Toast.LENGTH_SHORT).show();
+			msg("Файл не найден");
 		}
 		// get the file from the remote system
 		try {
 			ftp.retrieveFile(srcFilePath, output);
 		} catch (IOException e) {
 			e.printStackTrace();
-			Toast.makeText(this,"Ошибка загрузки файла (проверьте наличие)", Toast.LENGTH_SHORT).show();
+			msg("Ошибка загрузки файла (проверьте наличие)");
 			try {
 				output.close();
 			} catch (IOException e1) {
@@ -133,8 +130,7 @@ public class MainActivity extends Activity {
 		}
 		File file = new File(desFilePath);
 		long length = file.length() / 1024;
-		Toast.makeText(this,"Файл получен: " + desFilePath + " (" + length
-				+ "Kb)", Toast.LENGTH_SHORT).show();
+		msg("Файл получен: "+desFilePath+" ("+ length+"Kb)");
 		try {
 			output.close();
 		} catch (IOException e) {
@@ -142,32 +138,30 @@ public class MainActivity extends Activity {
 		}
 		return true;
    }
-
-   public boolean FTP_Upload(String dstFilePath, String srcFilePath)  {
- 		
+    // upload file from ftp server
+    public boolean FTP_Upload(String dstFilePath, String srcFilePath)  {
+ 	
 		try{
  			input = new FileInputStream(srcFilePath);
  		} catch (Exception e) {
- 			Toast.makeText(this,"Файл отсутствует", Toast.LENGTH_SHORT).show();
+ 			msg("Файл отсутствует");
  			return false;
  		}
  		try {
  			ftp.storeFile(dstFilePath, input);
  		} catch (IOException e) {
- 			Toast.makeText(this,"Ошибка выгрузки файла (проверьте наличие)", Toast.LENGTH_SHORT).show();
+ 			msg("Ошибка выгрузки файла (проверьте наличие)");
  			try {
  				input.close();
  			} catch (IOException e1) {
- 			
- 				e1.printStackTrace();
+				e1.printStackTrace();
  			}
  			return false;
  		}
  	
  		File file = new File(srcFilePath);
  		long length = file.length() / 1024;
- 		Toast.makeText(this,"Файл выгружен: " + UFile + " (" + length
- 				+ "Kb)", Toast.LENGTH_SHORT).show();
+ 		msg("Файл выгружен: "+UFile+" ("+length+")");
  		
  		try {
  			input.close();
@@ -175,26 +169,55 @@ public class MainActivity extends Activity {
  		catch(IOException e1) {}
  		return true;
  	}
-    
-	// обработчик нажатия кнопки получить данные	
+    // send message on activity
+   	public void msg(String msg){
+   		Toast.makeText(this,msg,Toast.LENGTH_SHORT).show();
+   	}
+	// main get file method	
     public void btnGdClick (View v){
-       	FTP_Connect(FTP_Server);
-    	FTP_Login(FTP_User, FTP_Pass);
-    	FTP_CD(FTP_Dir);
-    	//FTP_Download(FTP_Dir+"/"+DFile, LOCAL_Dir+"/"+DFile);
-    	//FTP_Disconnect();
+       	new Thread(new Runnable() {
+       		public void run() {
+				runOnUiThread(new Runnable() {
+					public void run() {
+						// TODO Auto-generated method stub
+						try{
+							FTP_Connect(FTP_Server);
+							FTP_Login(FTP_User, FTP_Pass);
+							FTP_CD(FTP_Dir);
+							FTP_Download(FTP_Dir+"/"+DFile, LOCAL_Dir+"/"+DFile);
+							FTP_Disconnect();
+							}
+						catch (Exception e){
+							msg("Download Error");
+							}
+					}
+				 });				
+       		}
+		}).start();
     }
-     
-    // обработчик нажатия кнопки отправить данные
+    // main send file method
     public void btnSdClick (View v){
-    	FTP_Connect(FTP_Server);
-    	FTP_Login(FTP_User, FTP_Pass);
-    	FTP_CD(FTP_Dir);
-    	//FTP_Upload(FTP_Dir+"/"+UFile,LOCAL_Dir+"/"+UFile);
-    	//FTP_Disconnect();
+    	new Thread(new Runnable() {
+       		public void run() {
+				runOnUiThread(new Runnable() {
+					public void run() {
+						// TODO Auto-generated method stub
+						try{
+							FTP_Connect(FTP_Server);
+							FTP_Login(FTP_User, FTP_Pass);
+							FTP_CD(FTP_Dir);
+							FTP_Upload(FTP_Dir+"/"+UFile,LOCAL_Dir+"/"+UFile);
+							FTP_Disconnect();
+							}
+						catch (Exception e){
+							msg("Download Error");
+							}
+					}
+				});
+			}
+       	}).start();
      }
-        
-    // обработчик нажатия кнопки настройки
+    // main open settings method
     public void btnStClick (View V){
     	try{
     	Intent intent = new Intent(this,SettingsActivity.class);
